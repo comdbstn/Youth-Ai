@@ -6,9 +6,7 @@ const nextConfig: NextConfig = {
   generateEtags: false,
   poweredByHeader: false,
   compress: true,
-  experimental: {
-    serverComponentsExternalPackages: ['@supabase/supabase-js']
-  }
+  serverExternalPackages: ['@supabase/supabase-js']
 };
 
 export default nextConfig;
