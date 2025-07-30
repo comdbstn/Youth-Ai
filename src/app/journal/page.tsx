@@ -8,6 +8,9 @@ import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useCrossTab } from '@/lib/cross-tab-context';
 
+// 동적 렌더링 강제
+export const dynamic = 'force-dynamic';
+
 const JournalPage = () => {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [newEntry, setNewEntry] = useState('');

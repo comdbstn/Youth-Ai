@@ -6,6 +6,9 @@ import type { Routine } from '@/types';
 import SkeletonLoader from '@/components/SkeletonLoader';
 import { useCrossTab } from '@/lib/cross-tab-context';
 
+// 동적 렌더링 강제
+export const dynamic = 'force-dynamic';
+
 const RoutinesPage = () => {
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [newRoutineName, setNewRoutineName] = useState('');

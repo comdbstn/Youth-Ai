@@ -4,6 +4,9 @@ import { useChat } from '@ai-sdk/react';
 import { useEffect, useRef, useState } from 'react';
 import { useCrossTab } from '@/lib/cross-tab-context';
 
+// 동적 렌더링 강제
+export const dynamic = 'force-dynamic';
+
 export default function ChatPage() {
   const { activities, clearActivities } = useCrossTab();
   const [showActivities, setShowActivities] = useState(false);

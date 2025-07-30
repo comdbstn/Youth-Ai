@@ -7,6 +7,9 @@ import SkeletonLoader from '@/components/SkeletonLoader';
 import TodayBriefing from '@/components/TodayBriefing';
 import { useCrossTab } from '@/lib/cross-tab-context';
 
+// 동적 렌더링 강제
+export const dynamic = 'force-dynamic';
+
 export default function HomePage() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [newGoal, setNewGoal] = useState('');
