@@ -3,6 +3,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { createClient } from '@/lib/supabase';
 import type { Goal } from '@/types';
+import type { User } from '@supabase/supabase-js';
 import SkeletonLoader from '@/components/SkeletonLoader';
 import TodayBriefing from '@/components/TodayBriefing';
 import { useCrossTab } from '@/lib/cross-tab-context';
@@ -14,7 +15,7 @@ export default function HomePage() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [newGoal, setNewGoal] = useState('');
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const supabase = createClient();
   const { broadcastActivity } = useCrossTab();
 
@@ -59,7 +60,7 @@ export default function HomePage() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'goals' },
-        (payload) => {
+        () => {
           if (user) {
             fetchGoals();
           }

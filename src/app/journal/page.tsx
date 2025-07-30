@@ -3,6 +3,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { createClient } from '@/lib/supabase';
 import type { JournalEntry } from '@/types';
+import type { User } from '@supabase/supabase-js';
 import SkeletonLoader from '@/components/SkeletonLoader';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -16,7 +17,7 @@ const JournalPage = () => {
   const [newEntry, setNewEntry] = useState('');
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const supabase = createClient();
   const { broadcastActivity } = useCrossTab();
 
@@ -61,7 +62,7 @@ const JournalPage = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'journal_entries' },
-        (payload) => {
+        () => {
           if (user) {
             fetchEntries();
           }

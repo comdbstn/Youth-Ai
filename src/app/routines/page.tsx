@@ -3,6 +3,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { createClient } from '@/lib/supabase';
 import type { Routine } from '@/types';
+import type { User } from '@supabase/supabase-js';
 import SkeletonLoader from '@/components/SkeletonLoader';
 import { useCrossTab } from '@/lib/cross-tab-context';
 
@@ -13,7 +14,7 @@ const RoutinesPage = () => {
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [newRoutineName, setNewRoutineName] = useState('');
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const supabase = createClient();
   const { broadcastActivity } = useCrossTab();
 
@@ -58,7 +59,7 @@ const RoutinesPage = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'routines' },
-        (payload) => {
+        () => {
           if (user) {
             fetchRoutines();
           }

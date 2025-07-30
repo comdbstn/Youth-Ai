@@ -1,20 +1,19 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-interface TabActivity {
+interface Activity {
   id: string;
-  type: 'page_visit' | 'goal_add' | 'goal_complete' | 'routine_increment' | 'journal_add' | 'user_action';
-  page: string;
   timestamp: number;
-  data?: Record<string, unknown>;
+  type: string;
+  page: string;
+  data: Record<string, unknown>;
   description: string;
 }
 
 interface CrossTabContextType {
-  activities: TabActivity[];
-  currentPage: string;
-  broadcastActivity: (activity: Omit<TabActivity, 'id' | 'timestamp'>) => void;
+  activities: Activity[];
+  broadcastActivity: (activity: Omit<Activity, 'id' | 'timestamp'>) => void;
   clearActivities: () => void;
 }
 
@@ -28,74 +27,51 @@ export const useCrossTab = () => {
   return context;
 };
 
-export const CrossTabProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [activities, setActivities] = useState<TabActivity[]>([]);
-  const [currentPage, setCurrentPage] = useState('');
-  const [channel, setChannel] = useState<BroadcastChannel | null>(null);
+interface CrossTabProviderProps {
+  children: React.ReactNode;
+}
+
+export const CrossTabProvider = ({ children }: CrossTabProviderProps) => {
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [broadcastChannel, setBroadcastChannel] = useState<BroadcastChannel | null>(null);
 
   useEffect(() => {
-    // BroadcastChannel 초기화
-    const bc = new BroadcastChannel('youth-ai-tabs');
-    setChannel(bc);
+    // BroadcastChannel은 클라이언트에서만 사용 가능
+    if (typeof window !== 'undefined') {
+      const channel = new BroadcastChannel('youth-ai-activities');
+      setBroadcastChannel(channel);
 
-    // 현재 페이지 감지
-    const updateCurrentPage = () => {
-      setCurrentPage(window.location.pathname);
-    };
-    updateCurrentPage();
-    window.addEventListener('popstate', updateCurrentPage);
+      channel.addEventListener('message', (event) => {
+        const activity = event.data as Activity;
+        setActivities(prev => [...prev.slice(-9), activity]); // 최대 10개 활동만 유지
+      });
 
-    // 다른 탭에서 오는 메시지 수신
-    bc.onmessage = (event) => {
-      const activity: TabActivity = event.data;
-      setActivities(prev => [...prev.slice(-49), activity]); // 최대 50개 활동 유지
-    };
-
-    // 페이지 방문 활동 브로드캐스트
-    const visitActivity: Omit<TabActivity, 'id' | 'timestamp'> = {
-      type: 'page_visit',
-      page: window.location.pathname,
-      description: `${getPageName(window.location.pathname)} 페이지 방문`
-    };
-    
-    setTimeout(() => {
-      broadcastActivityInternal(visitActivity);
-    }, 100);
-
-    return () => {
-      bc.close();
-      window.removeEventListener('popstate', updateCurrentPage);
-    };
+      return () => {
+        channel.close();
+      };
+    }
   }, []);
 
-  const getPageName = (path: string): string => {
-    const pageNames: Record<string, string> = {
-      '/': '홈',
-      '/chat': '채팅',
-      '/journal': '일기',
-      '/routines': '루틴',
-      '/fortune': '운세',
-      '/detox': '디지털 디톡스',
-      '/settings': '설정'
-    };
-    return pageNames[path] || path;
-  };
-
-  const broadcastActivityInternal = useCallback((activity: Omit<TabActivity, 'id' | 'timestamp'>) => {
-    if (!channel) return;
-    
-    const fullActivity: TabActivity = {
+  const broadcastActivityInternal = useCallback((activity: Omit<Activity, 'id' | 'timestamp'>) => {
+    const fullActivity: Activity = {
       ...activity,
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: Date.now()
+      id: Math.random().toString(36).substr(2, 9),
+      timestamp: Date.now(),
     };
 
-    channel.postMessage(fullActivity);
-    setActivities(prev => [...prev.slice(-49), fullActivity]);
-  }, [channel]);
+    // 로컬 상태 업데이트
+    setActivities(prev => [...prev.slice(-9), fullActivity]);
 
-  const broadcastActivity = useCallback((activity: Omit<TabActivity, 'id' | 'timestamp'>) => {
-    broadcastActivityInternal(activity);
+    // 다른 탭에 브로드캐스트
+    if (broadcastChannel) {
+      broadcastChannel.postMessage(fullActivity);
+    }
+
+    console.log('[CrossTab] 활동 브로드캐스트:', fullActivity);
+  }, [broadcastChannel]);
+
+  useEffect(() => {
+    // broadcastActivityInternal이 변경될 때마다 cleanup
   }, [broadcastActivityInternal]);
 
   const clearActivities = useCallback(() => {
@@ -103,12 +79,13 @@ export const CrossTabProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   return (
-    <CrossTabContext.Provider value={{
-      activities,
-      currentPage,
-      broadcastActivity,
-      clearActivities
-    }}>
+    <CrossTabContext.Provider
+      value={{
+        activities,
+        broadcastActivity: broadcastActivityInternal,
+        clearActivities,
+      }}
+    >
       {children}
     </CrossTabContext.Provider>
   );
