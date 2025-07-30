@@ -14,26 +14,45 @@ export default function HomePage() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [newGoal, setNewGoal] = useState('');
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
   const supabase = createClient();
   const { broadcastActivity } = useCrossTab();
 
   useEffect(() => {
-    const fetchGoals = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('goals')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching goals:', error);
-      } else {
-        setGoals(data as Goal[]);
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      if (!user) {
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+      
+      await fetchGoals();
     };
 
-    fetchGoals();
+    const fetchGoals = async () => {
+      if (!user) return;
+      
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('goals')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching goals:', error);
+        } else {
+          setGoals(data as Goal[]);
+        }
+      } catch (error) {
+        console.error('Unexpected error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getUser();
 
     const channel = supabase
       .channel('realtime-goals')
@@ -41,7 +60,9 @@ export default function HomePage() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'goals' },
         (payload) => {
-          fetchGoals();
+          if (user) {
+            fetchGoals();
+          }
         }
       )
       .subscribe();
@@ -49,63 +70,89 @@ export default function HomePage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase]);
+  }, [supabase, user]);
 
   const handleAddGoal = async (e: FormEvent) => {
     e.preventDefault();
-    if (newGoal.trim() === '') return;
+    if (newGoal.trim() === '' || !user) return;
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('goals')
+        .insert([{ title: newGoal, user_id: user.id }])
+        .select();
 
-    const { data, error } = await supabase
-      .from('goals')
-      .insert([{ title: newGoal, user_id: user.id }])
-      .select();
-
-    if (error) {
-      console.error('Error adding goal:', error);
-    } else if (data) {
-      setGoals([data[0] as Goal, ...goals]);
-      setNewGoal('');
-      
-      // 활동 브로드캐스트
-      broadcastActivity({
-        type: 'goal_add',
-        page: '/',
-        data: { goalTitle: newGoal },
-        description: `새 목표 추가: "${newGoal}"`
-      });
+      if (error) {
+        console.error('Error adding goal:', error);
+        alert('목표 추가에 실패했습니다.');
+      } else if (data) {
+        setGoals([data[0] as Goal, ...goals]);
+        setNewGoal('');
+        
+        // 활동 브로드캐스트
+        broadcastActivity({
+          type: 'goal_add',
+          page: '/',
+          data: { goalTitle: newGoal },
+          description: `새 목표 추가: "${newGoal}"`
+        });
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      alert('목표 추가에 실패했습니다.');
     }
   };
 
   const toggleGoal = async (id: number, completed: boolean) => {
-    const { error } = await supabase
-      .from('goals')
-      .update({ completed })
-      .eq('id', id);
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('goals')
+        .update({ completed })
+        .eq('id', id);
 
-    if (error) {
-      console.error('Error updating goal:', error);
-    } else {
-      const goalTitle = goals.find(g => g.id === id)?.title || '';
-      setGoals(
-        goals.map((goal) =>
-          goal.id === id ? { ...goal, completed } : goal
-        )
-      );
-      
-      // 활동 브로드캐스트
-      broadcastActivity({
-        type: 'goal_complete',
-        page: '/',
-        data: { goalId: id, goalTitle, completed },
-        description: `목표 "${goalTitle}" ${completed ? '완료' : '미완료'}로 변경`
-      });
+      if (error) {
+        console.error('Error updating goal:', error);
+        alert('목표 업데이트에 실패했습니다.');
+      } else {
+        const goalTitle = goals.find(g => g.id === id)?.title || '';
+        setGoals(
+          goals.map((goal) =>
+            goal.id === id ? { ...goal, completed } : goal
+          )
+        );
+        
+        // 활동 브로드캐스트
+        broadcastActivity({
+          type: 'goal_complete',
+          page: '/',
+          data: { goalId: id, goalTitle, completed },
+          description: `목표 "${goalTitle}" ${completed ? '완료' : '미완료'}로 변경`
+        });
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      alert('목표 업데이트에 실패했습니다.');
     }
   };
+
+  if (!user) {
+    return (
+      <div className="p-4">
+        <div className="text-center py-8">
+          <h2 className="text-xl font-bold text-white mb-4">로그인이 필요합니다</h2>
+          <p className="text-gray-400 mb-4">Youth Ai를 사용하려면 먼저 로그인해주세요.</p>
+          <button 
+            onClick={() => window.location.href = '/auth'} 
+            className="btn-primary"
+          >
+            로그인하기
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4">

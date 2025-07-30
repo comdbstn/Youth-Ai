@@ -80,6 +80,30 @@ CREATE TABLE journal_entries (
     emotion TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- RLS (Row Level Security) 활성화
+ALTER TABLE goals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE routines ENABLE ROW LEVEL SECURITY;
+ALTER TABLE journal_entries ENABLE ROW LEVEL SECURITY;
+
+-- RLS 정책 생성 (인증된 사용자만 자신의 데이터 접근 가능)
+-- goals 정책
+CREATE POLICY "Users can view own goals" ON goals FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own goals" ON goals FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own goals" ON goals FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own goals" ON goals FOR DELETE USING (auth.uid() = user_id);
+
+-- routines 정책
+CREATE POLICY "Users can view own routines" ON routines FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own routines" ON routines FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own routines" ON routines FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own routines" ON routines FOR DELETE USING (auth.uid() = user_id);
+
+-- journal_entries 정책
+CREATE POLICY "Users can view own journal entries" ON journal_entries FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own journal entries" ON journal_entries FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own journal entries" ON journal_entries FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own journal entries" ON journal_entries FOR DELETE USING (auth.uid() = user_id);
 ```
 
 ### 5. 개발 서버 실행

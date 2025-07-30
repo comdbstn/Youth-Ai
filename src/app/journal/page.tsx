@@ -16,26 +16,45 @@ const JournalPage = () => {
   const [newEntry, setNewEntry] = useState('');
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const supabase = createClient();
   const { broadcastActivity } = useCrossTab();
 
   useEffect(() => {
-    const fetchEntries = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('journal_entries')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching journal entries:', error);
-      } else {
-        setEntries(data as JournalEntry[]);
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      if (!user) {
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+      
+      await fetchEntries();
     };
 
-    fetchEntries();
+    const fetchEntries = async () => {
+      if (!user) return;
+      
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('journal_entries')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching journal entries:', error);
+        } else {
+          setEntries(data as JournalEntry[]);
+        }
+      } catch (error) {
+        console.error('Unexpected error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getUser();
 
     const channel = supabase
       .channel('realtime-journal')
@@ -43,7 +62,9 @@ const JournalPage = () => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'journal_entries' },
         (payload) => {
-          fetchEntries();
+          if (user) {
+            fetchEntries();
+          }
         }
       )
       .subscribe();
@@ -51,45 +72,61 @@ const JournalPage = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase]);
+  }, [supabase, user]);
 
   const handleAddEntry = async (e: FormEvent) => {
     e.preventDefault();
-    if (newEntry.trim() === '') return;
+    if (newEntry.trim() === '' || !user) return;
 
     setIsSubmitting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    try {
+      const { data, error } = await supabase
+        .from('journal_entries')
+        .insert([{ 
+          entry_text: newEntry, 
+          user_id: user.id,
+          emotion: 'N/A' // 감정분석은 추후 별도 기능으로 분리
+        }])
+        .select();
+
+      if (error) {
+        console.error('Error creating journal entry:', error);
+        alert('일기 저장에 실패했습니다.');
+      } else if (data) {
+        setNewEntry('');
+        
+        // 활동 브로드캐스트
+        broadcastActivity({
+          type: 'journal_add',
+          page: '/journal',
+          data: { entryLength: newEntry.length },
+          description: `새 일기 작성 (${newEntry.length}자)`
+        });
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      alert('일기 저장에 실패했습니다.');
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    const { data, error } = await supabase
-      .from('journal_entries')
-      .insert([{ 
-        entry_text: newEntry, 
-        user_id: user.id,
-        emotion: 'N/A' // 감정분석은 추후 별도 기능으로 분리
-      }])
-      .select();
-
-    if (error) {
-       console.error('Error creating journal entry:', error);
-       alert('일기 저장에 실패했습니다.');
-    } else if (data) {
-       setNewEntry('');
-       
-       // 활동 브로드캐스트
-       broadcastActivity({
-         type: 'journal_add',
-         page: '/journal',
-         data: { entryLength: newEntry.length },
-         description: `새 일기 작성 (${newEntry.length}자)`
-       });
-    }
-    
-    setIsSubmitting(false);
   };
+
+  if (!user) {
+    return (
+      <div className="p-4">
+        <div className="text-center py-8">
+          <h2 className="text-xl font-bold text-white mb-4">로그인이 필요합니다</h2>
+          <p className="text-gray-400 mb-4">일기를 작성하려면 먼저 로그인해주세요.</p>
+          <button 
+            onClick={() => window.location.href = '/auth'} 
+            className="btn-primary"
+          >
+            로그인하기
+          </button>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="p-4">

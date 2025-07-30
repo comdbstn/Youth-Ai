@@ -1,24 +1,32 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import SkeletonLoader from './SkeletonLoader';
 
 const TodayBriefing = () => {
   const [briefing, setBriefing] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchBriefing = async () => {
       setIsLoading(true);
+      setError(null);
       try {
         const response = await fetch('/api/briefing');
         if (!response.ok) {
-          throw new Error('Failed to fetch briefing');
+          if (response.status === 401) {
+            throw new Error('로그인이 필요합니다.');
+          }
+          throw new Error('브리핑을 불러오는 데 실패했습니다.');
         }
         const data = await response.json();
-        setBriefing(data.briefing);
+        setBriefing(data.briefing || '브리핑을 불러오는 데 실패했습니다.');
       } catch (error) {
-        console.error(error);
-        setBriefing('브리핑을 불러오는 데 실패했습니다.');
+        console.error('Briefing error:', error);
+        const errorMessage = error instanceof Error ? error.message : '브리핑을 불러오는 데 실패했습니다.';
+        setError(errorMessage);
+        setBriefing('');
       } finally {
         setIsLoading(false);
       }
@@ -31,10 +39,16 @@ const TodayBriefing = () => {
     <div className="bg-gray-800 p-4 rounded-lg shadow-md mb-6">
       <h2 className="text-xl font-bold mb-2 text-white">오늘의 브리핑 ☀️</h2>
       {isLoading ? (
-        <div className="space-y-2">
-          <div className="h-4 bg-gray-700 rounded w-3/4 animate-pulse"></div>
-          <div className="h-4 bg-gray-700 rounded w-1/2 animate-pulse"></div>
-          <div className="h-4 bg-gray-700 rounded w-5/6 animate-pulse"></div>
+        <SkeletonLoader count={3} className="h-4" />
+      ) : error ? (
+        <div className="text-center py-4">
+          <p className="text-red-400 text-sm">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-2 text-blue-400 text-sm hover:text-blue-300"
+          >
+            다시 시도
+          </button>
         </div>
       ) : (
         <p className="text-gray-300 whitespace-pre-wrap">{briefing}</p>

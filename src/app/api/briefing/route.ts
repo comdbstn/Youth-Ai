@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 import { createOpenAI } from '@ai-sdk/openai';
-import { streamText } from 'ai';
+import { generateText } from 'ai';
 import { getContext } from '@/lib/context';
 
 export const runtime = 'edge';
@@ -32,12 +32,11 @@ Always respond in Korean.
 User's context:
 ${context}`;
 
-    const { text: briefing } = await streamText({
+    const { text: briefing } = await generateText({
       model: openai('gpt-4o-mini'),
       system: systemPrompt,
       prompt: "오늘의 브리핑을 작성해줘."
     });
-
 
     return NextResponse.json({ briefing });
 

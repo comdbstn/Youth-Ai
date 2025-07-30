@@ -13,26 +13,45 @@ const RoutinesPage = () => {
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [newRoutineName, setNewRoutineName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
   const supabase = createClient();
   const { broadcastActivity } = useCrossTab();
 
   useEffect(() => {
-    const fetchRoutines = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('routines')
-        .select('*')
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching routines:', error);
-      } else {
-        setRoutines(data as Routine[]);
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      if (!user) {
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+      
+      await fetchRoutines();
     };
 
-    fetchRoutines();
+    const fetchRoutines = async () => {
+      if (!user) return;
+      
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('routines')
+          .select('*')
+          .order('created_at', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching routines:', error);
+        } else {
+          setRoutines(data as Routine[]);
+        }
+      } catch (error) {
+        console.error('Unexpected error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getUser();
 
     const channel = supabase
       .channel('realtime-routines')
@@ -40,7 +59,9 @@ const RoutinesPage = () => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'routines' },
         (payload) => {
-          fetchRoutines();
+          if (user) {
+            fetchRoutines();
+          }
         }
       )
       .subscribe();
@@ -48,81 +69,114 @@ const RoutinesPage = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase]);
+  }, [supabase, user]);
 
   const handleAddRoutine = async (e: FormEvent) => {
     e.preventDefault();
-    if (newRoutineName.trim() === '') return;
+    if (newRoutineName.trim() === '' || !user) return;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('routines')
+        .insert([{ name: newRoutineName, user_id: user.id, count: 0 }])
+        .select();
 
-    const { data, error } = await supabase
-      .from('routines')
-      .insert([{ name: newRoutineName, user_id: user.id, count: 0 }])
-      .select();
-
-    if (error) {
-      console.error('Error adding routine:', error);
-    } else if (data) {
-      setRoutines([...routines, data[0] as Routine]);
-      setNewRoutineName('');
-      
-      // 활동 브로드캐스트
-      broadcastActivity({
-        type: 'user_action',
-        page: '/routines',
-        data: { routineName: newRoutineName },
-        description: `새 루틴 추가: "${newRoutineName}"`
-      });
+      if (error) {
+        console.error('Error adding routine:', error);
+        alert('루틴 추가에 실패했습니다.');
+      } else if (data) {
+        setRoutines([...routines, data[0] as Routine]);
+        setNewRoutineName('');
+        
+        // 활동 브로드캐스트
+        broadcastActivity({
+          type: 'user_action',
+          page: '/routines',
+          data: { routineName: newRoutineName },
+          description: `새 루틴 추가: "${newRoutineName}"`
+        });
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      alert('루틴 추가에 실패했습니다.');
     }
   };
 
   const incrementCount = async (id: number) => {
+    if (!user) return;
+    
     const routine = routines.find((r) => r.id === id);
     if (!routine) return;
 
-    const { error } = await supabase
-      .from('routines')
-      .update({ count: (routine.count || 0) + 1 })
-      .eq('id', id);
+    try {
+      const { error } = await supabase
+        .from('routines')
+        .update({ count: (routine.count || 0) + 1 })
+        .eq('id', id);
 
-    if (error) {
-      console.error('Error incrementing routine:', error);
-    } else {
-      // 활동 브로드캐스트
-      broadcastActivity({
-        type: 'routine_increment',
-        page: '/routines',
-        data: { routineId: id, routineName: routine.name, newCount: (routine.count || 0) + 1 },
-        description: `루틴 "${routine.name}" 완료 (총 ${(routine.count || 0) + 1}회)`
-      });
+      if (error) {
+        console.error('Error incrementing routine:', error);
+        alert('루틴 업데이트에 실패했습니다.');
+      } else {
+        // 활동 브로드캐스트
+        broadcastActivity({
+          type: 'routine_increment',
+          page: '/routines',
+          data: { routineId: id, routineName: routine.name, newCount: (routine.count || 0) + 1 },
+          description: `루틴 "${routine.name}" 완료 (총 ${(routine.count || 0) + 1}회)`
+        });
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      alert('루틴 업데이트에 실패했습니다.');
     }
   };
 
   const handleResetRoutines = async () => {
-     const { data: { user } } = await supabase.auth.getUser();
-     if (!user) return;
+    if (!user) return;
 
-     const { error } = await supabase
-       .from('routines')
-       .update({ count: 0 })
-       .eq('user_id', user.id);
+    try {
+      const { error } = await supabase
+        .from('routines')
+        .update({ count: 0 })
+        .eq('user_id', user.id);
 
-     if (error) {
-       console.error('Error resetting routines:', error);
-     } else {
-       alert('모든 루틴 횟수가 초기화되었습니다.');
-       
-       // 활동 브로드캐스트
-       broadcastActivity({
-         type: 'user_action',
-         page: '/routines',
-         data: { action: 'reset_all' },
-         description: '모든 루틴 횟수 초기화'
-       });
-     }
+      if (error) {
+        console.error('Error resetting routines:', error);
+        alert('루틴 초기화에 실패했습니다.');
+      } else {
+        alert('모든 루틴 횟수가 초기화되었습니다.');
+        
+        // 활동 브로드캐스트
+        broadcastActivity({
+          type: 'user_action',
+          page: '/routines',
+          data: { action: 'reset_all' },
+          description: '모든 루틴 횟수 초기화'
+        });
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      alert('루틴 초기화에 실패했습니다.');
+    }
   };
+
+  if (!user) {
+    return (
+      <div className="p-4">
+        <div className="text-center py-8">
+          <h2 className="text-xl font-bold text-white mb-4">로그인이 필요합니다</h2>
+          <p className="text-gray-400 mb-4">루틴을 관리하려면 먼저 로그인해주세요.</p>
+          <button 
+            onClick={() => window.location.href = '/auth'} 
+            className="btn-primary"
+          >
+            로그인하기
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4">

@@ -1,23 +1,19 @@
 {
-  "name": "Youth Ai - 당신의 AI 라이프 코치",
+  "name": "Youth Ai - 개인 AI 라이프 코치",
   "short_name": "Youth Ai",
-  "description": "목표 관리, 루틴 추적, 일기 작성, AI 코칭을 통해 더 나은 삶을 만들어보세요.",
+  "description": "일상 관리와 자기계발을 위한 AI 기반 개인 라이프 코치 앱",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#111827",
-  "theme_color": "#1f2937",
+  "background_color": "#0f172a",
+  "theme_color": "#3b82f6",
   "orientation": "portrait-primary",
   "categories": ["lifestyle", "productivity", "health"],
   "icons": [
     {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "/next.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ]
 } 
