@@ -44,8 +44,9 @@ export default function AuthPage() {
           router.push('/');
         }
       }
-    } catch (error: any) {
-      setMessage(error.message || '오류가 발생했습니다.');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : '오류가 발생했습니다.';
+      setMessage(errorMessage);
     } finally {
       setIsLoading(false);
     }

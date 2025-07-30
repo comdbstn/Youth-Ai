@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { createClient } from '@/lib/supabase';
 import type { Goal } from '@/types';
 import type { User } from '@supabase/supabase-js';
@@ -19,6 +19,27 @@ export default function HomePage() {
   const [authLoading, setAuthLoading] = useState(true);
   const supabase = createClient();
   const { broadcastActivity } = useCrossTab();
+
+  const fetchGoals = useCallback(async (currentUser: User) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching goals:', error);
+      } else {
+        setGoals(data as Goal[]);
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -39,27 +60,6 @@ export default function HomePage() {
       }
     };
 
-    const fetchGoals = async (currentUser: User) => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('goals')
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error('Error fetching goals:', error);
-        } else {
-          setGoals(data as Goal[]);
-        }
-      } catch (error) {
-        console.error('Unexpected error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     checkAuth();
 
     // 인증 상태 변화 감지
@@ -74,30 +74,30 @@ export default function HomePage() {
       }
     });
 
-    // Realtime 설정은 로그인된 경우에만
-    let channel: any = null;
-    if (user) {
-      channel = supabase
-        .channel('realtime-goals')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'goals' },
-          () => {
-            if (user) {
-              fetchGoals(user);
-            }
-          }
-        )
-        .subscribe();
-    }
-
     return () => {
       subscription?.unsubscribe();
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
     };
-  }, [supabase]);
+  }, [supabase, fetchGoals]);
+
+  // Realtime 설정을 별도 useEffect로 분리
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('realtime-goals')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'goals' },
+        () => {
+          fetchGoals(user);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, supabase, fetchGoals]);
 
   const handleAddGoal = async (e: FormEvent) => {
     e.preventDefault();
