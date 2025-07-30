@@ -1,27 +1,32 @@
-import type { Metadata } from "next";
-import { Noto_Sans_KR } from "next/font/google";
-import "./globals.css";
-import Navbar from "@/components/Navbar";
-import { CrossTabProvider } from "@/lib/cross-tab-context";
+import type { Metadata } from 'next';
+import { Noto_Sans_KR } from 'next/font/google';
+import './globals.css';
+import Navbar from '@/components/Navbar';
+import { CrossTabProvider } from '@/lib/cross-tab-context';
 
 const notoSansKr = Noto_Sans_KR({ 
-  subsets: ["latin"],
-  weight: ['400', '700'],
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '700'],
   display: 'swap',
 });
 
 export const metadata: Metadata = {
   title: "Youth Ai - 개인 AI 라이프 코치",
-  description: "목표 관리, 루틴 추적, 일기 작성, AI 코칭을 통해 더 나은 삶을 만들어보세요.",
-  keywords: "AI 라이프코치, 목표관리, 루틴추적, 일기, 자기계발",
-  viewport: "width=device-width, initial-scale=1",
-  themeColor: "#1f2937",
+  description: "일상 관리와 자기계발을 위한 AI 기반 개인 라이프 코치 앱",
+  keywords: "AI, 라이프코치, 일정관리, 자기계발, 개인비서",
+  authors: [{ name: "Youth Ai Team" }],
+  themeColor: "#3b82f6",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
-    title: "Youth Ai",
+    statusBarStyle: "black-translucent",
+    title: "Youth Ai"
   },
+  icons: {
+    icon: "/next.svg",
+    apple: "/next.svg"
+  }
 };
 
 export default function RootLayout({
@@ -35,7 +40,7 @@ export default function RootLayout({
         <meta name="color-scheme" content="dark" />
         <style dangerouslySetInnerHTML={{
           __html: `
-            body { 
+            body {
               background: linear-gradient(to bottom, transparent, rgb(17, 24, 39)) rgb(2, 6, 23) !important;
               color: white !important;
               min-height: 100vh !important;
@@ -45,7 +50,7 @@ export default function RootLayout({
       </head>
       <body className={`${notoSansKr.className} bg-gray-900 text-white min-h-screen`}>
         <CrossTabProvider>
-          <main className="max-w-md mx-auto min-h-screen bg-gray-900/80 pb-20 relative">
+          <main className="w-full max-w-md mx-auto min-h-screen bg-gray-900/80 pb-20 relative">
             {children}
           </main>
           <Navbar />
