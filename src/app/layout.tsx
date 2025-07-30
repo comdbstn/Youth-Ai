@@ -50,9 +50,11 @@ export default function RootLayout({
       </head>
       <body className={`${notoSansKr.className} bg-gray-900 text-white min-h-screen`}>
         <CrossTabProvider>
-          <main className="w-full max-w-md mx-auto min-h-screen bg-gray-900/80 pb-20 relative">
-            {children}
-          </main>
+          <div className="flex justify-center min-h-screen">
+            <main className="w-full max-w-md bg-gray-900/80 pb-20 relative">
+              {children}
+            </main>
+          </div>
           <Navbar />
         </CrossTabProvider>
       </body>
