@@ -7,6 +7,7 @@ import type { User } from '@supabase/supabase-js';
 import SkeletonLoader from '@/components/SkeletonLoader';
 import TodayBriefing from '@/components/TodayBriefing';
 import { useCrossTab } from '@/lib/cross-tab-context';
+import { Plus, Target, CheckCircle, Circle } from 'lucide-react';
 
 // 동적 렌더링 강제
 export const dynamic = 'force-dynamic';
@@ -166,10 +167,10 @@ export default function HomePage() {
 
   if (authLoading) {
     return (
-      <div className="p-4 flex items-center justify-center min-h-screen">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-400">로딩 중...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+          <p className="text-blue-200 text-lg">주인님을 위해 준비 중...</p>
         </div>
       </div>
     );
@@ -177,81 +178,160 @@ export default function HomePage() {
 
   if (!user) {
     return (
-      <div className="p-4">
-        <h1 className="text-2xl font-bold mb-4 text-white">홈</h1>
-        
-        <div className="bg-gray-800 p-4 rounded-lg shadow-md mb-6">
-          <h2 className="text-xl font-bold mb-2 text-white">오늘의 브리핑 ☀️</h2>
-          <div className="text-center py-4">
-            <p className="text-gray-400 text-sm">로그인 후 브리핑을 확인할 수 있습니다.</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold text-white mb-4">Youth Ai</h1>
+            <p className="text-xl text-blue-200">주인님만을 위한 개인 AI 라이프 코치</p>
           </div>
-        </div>
+          
+          <TodayBriefing />
 
-        <div className="text-center py-8">
-          <h2 className="text-xl font-bold text-white mb-4">로그인이 필요합니다</h2>
-          <p className="text-gray-400 mb-4">Youth Ai를 사용하려면 먼저 로그인해주세요.</p>
-          <button 
-            onClick={() => window.location.href = '/auth'} 
-            className="btn-primary"
-          >
-            로그인하기
-          </button>
+          <div className="text-center py-16">
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
+              <h2 className="text-2xl font-bold text-white mb-4">환영합니다, 주인님</h2>
+              <p className="text-blue-200 mb-6">Youth Ai를 사용하려면 먼저 로그인해주세요.</p>
+              <button 
+                onClick={() => window.location.href = '/auth'} 
+                className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3 px-8 rounded-xl transition-all duration-300 transform hover:scale-105"
+              >
+                로그인하기
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
+  const completedGoals = goals.filter(g => g.completed).length;
+  const totalGoals = goals.length;
+  const completionRate = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0;
+
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4 text-white">홈</h1>
-      <TodayBriefing />
-      <div className="bg-gray-800 p-4 rounded-lg shadow-md mt-6">
-        <h2 className="text-xl font-bold mb-2 text-white">오늘의 목표</h2>
-        {loading ? (
-          <SkeletonLoader count={3} className="h-8" />
-        ) : goals.length > 0 ? (
-          <ul className="space-y-2">
-            {goals.map((goal) => (
-              <li
-                key={goal.id}
-                className={`flex items-center justify-between p-2 rounded ${
-                  goal.completed ? 'bg-green-900/50' : 'bg-gray-700'
-                }`}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 p-6">
+      <div className="max-w-4xl mx-auto">
+        {/* 헤더 */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">안녕하세요, 주인님! 👑</h1>
+          <p className="text-blue-200">오늘도 멋진 하루를 만들어보세요</p>
+        </div>
+
+        <TodayBriefing />
+
+        {/* 통계 카드들 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 backdrop-blur-lg rounded-2xl p-6 border border-blue-400/30">
+            <div className="flex items-center justify-between mb-4">
+              <Target className="w-8 h-8 text-blue-400" />
+              <span className="text-2xl">🎯</span>
+            </div>
+            <div className="text-3xl font-bold text-white mb-1">{totalGoals}</div>
+            <div className="text-blue-200 text-sm">총 목표 개수</div>
+          </div>
+
+          <div className="bg-gradient-to-br from-green-500/20 to-green-600/20 backdrop-blur-lg rounded-2xl p-6 border border-green-400/30">
+            <div className="flex items-center justify-between mb-4">
+              <CheckCircle className="w-8 h-8 text-green-400" />
+              <span className="text-2xl">✅</span>
+            </div>
+            <div className="text-3xl font-bold text-white mb-1">{completedGoals}</div>
+            <div className="text-green-200 text-sm">완료한 목표</div>
+          </div>
+
+          <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 backdrop-blur-lg rounded-2xl p-6 border border-purple-400/30">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-8 h-8 rounded-full bg-purple-400 flex items-center justify-center text-white font-bold text-sm">
+                %
+              </div>
+              <span className="text-2xl">📊</span>
+            </div>
+            <div className="text-3xl font-bold text-white mb-1">{completionRate}%</div>
+            <div className="text-purple-200 text-sm">달성률</div>
+          </div>
+        </div>
+
+        {/* 목표 관리 섹션 */}
+        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-white">주인님의 목표</h2>
+            <div className="text-blue-200 text-sm">
+              {totalGoals > 0 && `${completedGoals}/${totalGoals} 완료`}
+            </div>
+          </div>
+
+          {/* 새 목표 추가 */}
+          <form onSubmit={handleAddGoal} className="mb-6">
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={newGoal}
+                onChange={(e) => setNewGoal(e.target.value)}
+                placeholder="새로운 목표를 입력해주세요, 주인님"
+                className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
+              />
+              <button
+                type="submit"
+                className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white p-3 rounded-xl transition-all duration-300 transform hover:scale-105"
               >
-                <span
-                  className={`${
-                    goal.completed ? 'line-through text-gray-500' : ''
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+          </form>
+
+          {/* 목표 목록 */}
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white/5 rounded-xl p-4">
+                  <SkeletonLoader count={1} className="h-6" />
+                </div>
+              ))}
+            </div>
+          ) : goals.length > 0 ? (
+            <div className="space-y-3">
+              {goals.map((goal) => (
+                <div
+                  key={goal.id}
+                  className={`group bg-white/5 hover:bg-white/10 rounded-xl p-4 transition-all duration-300 ${
+                    goal.completed ? 'opacity-75' : ''
                   }`}
                 >
-                  {goal.title}
-                </span>
-                <button
-                  onClick={() => toggleGoal(goal.id, !goal.completed)}
-                  className="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm"
-                >
-                  {goal.completed ? '취소' : '완료'}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="text-center py-8">
-            <p className="text-gray-400 mb-2">아직 설정된 목표가 없습니다</p>
-            <p className="text-sm text-gray-500">새로운 목표를 추가해보세요!</p>
-          </div>
-        )}
-        <form onSubmit={handleAddGoal} className="mt-4 flex">
-          <input
-            type="text"
-            value={newGoal}
-            onChange={(e) => setNewGoal(e.target.value)}
-            placeholder="새 목표 추가..."
-            className="input flex-grow"
-          />
-          <button type="submit" className="btn-primary ml-2">
-            추가
-          </button>
-        </form>
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => toggleGoal(goal.id, !goal.completed)}
+                      className="flex-shrink-0 transition-transform hover:scale-110"
+                    >
+                      {goal.completed ? (
+                        <CheckCircle className="w-6 h-6 text-green-400" />
+                      ) : (
+                        <Circle className="w-6 h-6 text-gray-400 hover:text-blue-400" />
+                      )}
+                    </button>
+                    <span
+                      className={`flex-1 text-lg ${
+                        goal.completed
+                          ? 'line-through text-gray-400'
+                          : 'text-white'
+                      }`}
+                    >
+                      {goal.title}
+                    </span>
+                    <div className="text-xs text-gray-400">
+                      {new Date(goal.created_at).toLocaleDateString('ko-KR')}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">🎯</div>
+              <p className="text-xl text-white mb-2">아직 목표가 없습니다, 주인님</p>
+              <p className="text-blue-200">첫 번째 목표를 설정해보세요!</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

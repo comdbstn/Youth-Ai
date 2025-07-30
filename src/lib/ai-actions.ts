@@ -78,34 +78,35 @@ export async function toggleGoalCompletion(goalId: number, completed: boolean) {
 }
 
 // 도구 5: 루틴 횟수 증가
-export async function incrementRoutine(name: string) {
-  console.log(`[AI Action] 루틴 횟수 증가 실행: ${name}`);
+export async function incrementRoutine(routineId: number) {
+  console.log(`[AI Action] 루틴 횟수 증가 실행: ID ${routineId}`);
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: '로그인이 필요합니다.' };
 
-  // 루틴 이름으로 id 찾기 (대소문자 구분 없이)
+  // 루틴 ID로 찾기
   const { data: routines, error: findError } = await supabase
     .from('routines')
-    .select('id, count')
-    .ilike('name', `%${name}%`)
+    .select('id, count, name')
+    .eq('id', routineId)
     .eq('user_id', user.id)
     .limit(1);
 
   if (findError || !routines || routines.length === 0) {
-    return { error: `"${name}" 루틴을 찾을 수 없습니다.` };
+    return { error: `루틴을 찾을 수 없습니다.` };
   }
   const routine = routines[0];
 
   const { error } = await supabase
     .from('routines')
-    .update({ count: routine.count + 1 })
-    .eq('id', routine.id);
-  
-  if (error) return { error: `루틴 업데이트 실패: ${error.message}` };
+    .update({ count: (routine.count || 0) + 1 })
+    .eq('id', routine.id)
+    .eq('user_id', user.id);
 
-  revalidatePath('/routines'); // 루틴 페이지 데이터 새로고침
-  return { success: `"${name}" 루틴을 완료했습니다. 총 ${routine.count + 1}회 달성!` };
+  if (error) return { error: `루틴 업데이트 실패: ${error.message}` };
+  
+  revalidatePath('/routines');
+  return { success: `주인님의 "${routine.name}" 루틴 횟수를 증가시켰습니다. (총 ${(routine.count || 0) + 1}회)` };
 }
 
 // 도구 6: 루틴 추가
@@ -145,30 +146,24 @@ export async function deleteRoutine(routineId: number) {
 }
 
 // 도구 8: 일기 작성 (감정 분석 추가)
-export async function createJournalEntry(entry_text: string) {
-  console.log(`[AI Action] 일기 작성 및 감정 분석 실행...`);
+export async function createJournalEntry(entryText: string, emotion: string = 'N/A') {
+  console.log(`[AI Action] 일기 작성 실행: ${entryText.slice(0, 50)}...`);
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: '로그인이 필요합니다.' };
 
-  // AI를 사용하여 감정 분석
-  const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  const { object: { emotion } } = await generateObject({
-    model: openai('gpt-4o-mini'),
-    schema: z.object({
-      emotion: z.string().describe('The user\'s primary emotion from this list: "행복", "기쁨", "보통", "슬픔", "화남"'),
-    }),
-    prompt: `Analyze the following journal entry and determine the user's primary emotion. Entry: "${entry_text}"`,
-  });
-
   const { error } = await supabase
     .from('journal_entries')
-    .insert({ entry_text, emotion, user_id: user.id });
+    .insert([{
+      entry_text: entryText,
+      emotion: emotion,
+      user_id: user.id
+    }]);
 
   if (error) return { error: `일기 작성 실패: ${error.message}` };
-
+  
   revalidatePath('/journal');
-  return { success: `오늘의 "${emotion}" 감정을 기록했습니다.` };
+  return { success: '주인님의 일기를 작성했습니다.' };
 }
 
 // 도구 9: 일기 삭제

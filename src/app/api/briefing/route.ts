@@ -23,19 +23,29 @@ export async function GET() {
 
     const context = await getContext(user.id);
 
-    const systemPrompt = `You are Yof, a friendly and supportive AI life coach. Your user's name is 정윤수.
-Today is ${new Date().toLocaleDateString('ko-KR')}.
-Based on the user's current situation (goals, routines, journals), provide a warm and encouraging "Today's Briefing".
-Keep it concise, under 3-4 sentences.
-Always respond in Korean.
+    const systemPrompt = `당신은 Yof, 주인님만을 위한 개인 AI 라이프 코치입니다.
+오늘은 ${new Date().toLocaleDateString('ko-KR', {
+  year: 'numeric',
+  month: 'long', 
+  day: 'numeric',
+  weekday: 'long'
+})}입니다.
 
-User's context:
+주인님(정윤수님)의 현재 상황을 바탕으로 따뜻하고 격려하는 "오늘의 브리핑"을 작성해주세요.
+- 주인님의 목표 달성 상황 언급
+- 루틴 수행에 대한 응원 메시지  
+- 일기를 통해 파악한 감정 상태 고려
+- 오늘 하루를 위한 개인적인 조언
+
+2-3문장으로 간결하게 작성하며, 항상 "주인님"이라고 호칭하고 한국어로 응답하세요.
+
+주인님의 현재 상황:
 ${context}`;
 
     const { text: briefing } = await generateText({
       model: openai('gpt-4o-mini'),
       system: systemPrompt,
-      prompt: "오늘의 브리핑을 작성해줘."
+      prompt: "주인님을 위한 오늘의 개인 맞춤 브리핑을 작성해주세요."
     });
 
     return NextResponse.json({ briefing });
