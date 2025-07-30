@@ -16,29 +16,36 @@ export default function HomePage() {
   const [newGoal, setNewGoal] = useState('');
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const supabase = createClient();
   const { broadcastActivity } = useCrossTab();
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      if (!user) {
-        setLoading(false);
-        return;
+    const checkAuth = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
+        
+        if (user) {
+          await fetchGoals(user);
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+      } finally {
+        setAuthLoading(false);
+        if (!user) {
+          setLoading(false);
+        }
       }
-      
-      await fetchGoals();
     };
 
-    const fetchGoals = async () => {
-      if (!user) return;
-      
+    const fetchGoals = async (currentUser: User) => {
       setLoading(true);
       try {
         const { data, error } = await supabase
           .from('goals')
           .select('*')
+          .eq('user_id', currentUser.id)
           .order('created_at', { ascending: false });
 
         if (error) {
@@ -53,25 +60,44 @@ export default function HomePage() {
       }
     };
 
-    getUser();
+    checkAuth();
 
-    const channel = supabase
-      .channel('realtime-goals')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'goals' },
-        () => {
-          if (user) {
-            fetchGoals();
+    // 인증 상태 변화 감지
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+        fetchGoals(session.user);
+      } else {
+        setUser(null);
+        setGoals([]);
+        setLoading(false);
+      }
+    });
+
+    // Realtime 설정은 로그인된 경우에만
+    let channel: any = null;
+    if (user) {
+      channel = supabase
+        .channel('realtime-goals')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'goals' },
+          () => {
+            if (user) {
+              fetchGoals(user);
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      subscription?.unsubscribe();
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
-  }, [supabase, user]);
+  }, [supabase]);
 
   const handleAddGoal = async (e: FormEvent) => {
     e.preventDefault();
@@ -138,9 +164,29 @@ export default function HomePage() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="p-4 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">로딩 중...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="p-4">
+        <h1 className="text-2xl font-bold mb-4 text-white">홈</h1>
+        
+        <div className="bg-gray-800 p-4 rounded-lg shadow-md mb-6">
+          <h2 className="text-xl font-bold mb-2 text-white">오늘의 브리핑 ☀️</h2>
+          <div className="text-center py-4">
+            <p className="text-gray-400 text-sm">로그인 후 브리핑을 확인할 수 있습니다.</p>
+          </div>
+        </div>
+
         <div className="text-center py-8">
           <h2 className="text-xl font-bold text-white mb-4">로그인이 필요합니다</h2>
           <p className="text-gray-400 mb-4">Youth Ai를 사용하려면 먼저 로그인해주세요.</p>

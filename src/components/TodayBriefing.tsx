@@ -1,14 +1,31 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase';
+import type { User } from '@supabase/supabase-js';
 import SkeletonLoader from './SkeletonLoader';
 
 const TodayBriefing = () => {
   const [briefing, setBriefing] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const supabase = createClient();
 
   useEffect(() => {
+    const checkUserAndFetch = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      
+      if (!user) {
+        setIsLoading(false);
+        setError('로그인이 필요합니다.');
+        return;
+      }
+
+      await fetchBriefing();
+    };
+
     const fetchBriefing = async () => {
       setIsLoading(true);
       setError(null);
@@ -32,8 +49,19 @@ const TodayBriefing = () => {
       }
     };
 
-    fetchBriefing();
-  }, []);
+    checkUserAndFetch();
+  }, [supabase]);
+
+  if (!user) {
+    return (
+      <div className="bg-gray-800 p-4 rounded-lg shadow-md mb-6">
+        <h2 className="text-xl font-bold mb-2 text-white">오늘의 브리핑 ☀️</h2>
+        <div className="text-center py-4">
+          <p className="text-gray-400 text-sm">로그인 후 브리핑을 확인할 수 있습니다.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-800 p-4 rounded-lg shadow-md mb-6">
